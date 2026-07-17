@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音感トレーニング 442Hzシミュレーター</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-3 md:p-6 overflow-x-hidden">
+
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6 shadow-2xl flex flex-col gap-6 fade-in">
+        
+        <!-- ヘッダー -->
+        <div class="text-center">
+            <h1 class="text-xl font-bold tracking-tight text-amber-400">音感トレーニング<br>442Hzシミュレーター</h1>
+            <p class="text-xs text-slate-400 mt-1">平均律（A4=442Hz基準）</p>
+        </div>
+
+        <!-- 1. 基準音選択タブ -->
+        <div class="flex flex-col gap-3">
+            <!-- オクターブ選択 -->
+            <div>
+                <span class="text-xs font-semibold text-slate-400 block mb-1.5 px-1">オクターブ</span>
+                <div class="grid grid-cols-3 bg-slate-950 rounded-xl p-1 gap-1 border border-slate-800/80">
+                    <button onclick="selectOctave(3)" id="octave-3" class="octave-tab py-2 text-sm font-medium rounded-lg text-slate-400 hover:text-slate-200 transition-all">3</button>
+                    <button onclick="selectOctave(4)" id="octave-4" class="octave-tab py-2 text-sm font-medium rounded-lg text-slate-400 hover:text-slate-200 transition-all">4</button>
+                    <button onclick="selectOctave(5)" id="octave-5" class="octave-tab py-2 text-sm font-medium rounded-lg text-slate-400 hover:text-slate-200 transition-all">5</button>
+                </div>
+            </div>
+
+            <!-- 音名選択（フラット♭表記統一） -->
+            <div>
+                <span class="text-xs font-semibold text-slate-400 block mb-1.5 px-1">音階</span>
+                <div class="grid grid-cols-4 bg-slate-950 rounded-xl p-1 gap-1 border border-slate-800/80" id="note-grid">
+                    <!-- JSで動的にボタン生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 再生・停止ボタン -->
+        <div class="flex flex-col items-center gap-2">
+            <button id="btn-play" onclick="togglePlay()" class="w-full py-4 rounded-2xl font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 hover:from-amber-400 hover:to-amber-500 active:scale-[0.98]">
+                <!-- 再生アイコン -->
+                <svg id="play-icon" class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                <!-- 停止アイコン (初期非表示) -->
+                <svg id="stop-icon" class="w-5 h-5 fill-current hidden" viewBox="0 0 24 24">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                </svg>
+                <span id="play-text">音を鳴らす</span>
+            </button>
+            <p id="status-hint" class="text-xs text-slate-500 italic mt-1">「音を鳴らす」とズレた音が再生されます</p>
+        </div>
+
+        <!-- 3. Hz調整ダイヤル -->
+        <div class="flex flex-col items-center justify-center py-2 relative">
+            <div class="text-center mb-3">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-widest block">ピッチ微調整</span>
+                <!-- 徹底的なブラインド仕様：調整中は「??? Hz」のまま、答え合わせ後に実数表示 -->
+                <div id="hz-display" class="text-3xl font-extrabold text-slate-100 font-mono tracking-wide mt-1">??? Hz</div>
+                <div id="blind-badge" class="inline-block bg-slate-950/80 text-amber-500/90 text-[10px] px-2 py-0.5 rounded-full border border-amber-500/20 font-medium mt-1">耳を頼りに合わせて！</div>
+            </div>
+
+            <!-- ダイヤルグラフィック -->
+            <div class="relative w-48 h-48 flex items-center justify-center touch-none select-none">
+                <!-- 外周リング -->
+                <div class="absolute inset-0 rounded-full border-4 border-slate-800 bg-slate-950/40 shadow-inner flex items-center justify-center">
+                    <!-- 正解(0Hzズレ)の基準点インジケータ -->
+                    <div class="absolute top-2 w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-md shadow-emerald-500/50"></div>
+                </div>
+
+                <!-- 回転ダイヤル（相対ドラッグ追従） -->
+                <div id="dial-wheel" class="w-40 h-48 rounded-full bg-slate-800 border-2 border-slate-700 shadow-2xl flex items-center justify-center cursor-grab active:cursor-grabbing transition-transform duration-75">
+                    <!-- 指針マーク -->
+                    <div class="absolute top-4 w-4 h-4 rounded-full bg-amber-500/20 flex items-center justify-center">
+                        <div class="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-lg shadow-amber-500/80"></div>
+                    </div>
+                    <!-- センターデザイン -->
+                    <div class="w-24 h-24 rounded-full bg-slate-900 border border-slate-700/60 flex flex-col items-center justify-center shadow-inner">
+                        <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Tuning</span>
+                        <div class="flex gap-8 text-[11px] font-bold text-slate-600 mt-0.5">
+                            <span>-</span>
+                            <span>+</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 指定通り「（15度＝1Hz）」を削除してシンプルに -->
+            <p class="text-[11px] text-slate-500 mt-3 text-center">ダイヤルを回して調整</p>
+        </div>
+
+        <!-- 4. 答え合わせ結果表示パネル (答え合わせボタンを押すまで非表示) -->
+        <div id="result-panel" class="hidden flex flex-col gap-3 p-4 bg-slate-950 rounded-2xl border border-slate-800 fade-in">
+            <h3 class="text-sm font-bold text-amber-400">答え合わせ結果</h3>
+            <div class="grid grid-cols-2 gap-3 text-xs">
+                <div class="bg-slate-900/50 p-2.5 rounded-xl border border-slate-800/40">
+                    <span class="text-slate-400 block mb-0.5">あなたの設定</span>
+                    <span id="result-user-hz" class="text-base font-bold font-mono text-slate-100">- Hz</span>
+                </div>
+                <div class="bg-slate-900/50 p-2.5 rounded-xl border border-slate-800/40">
+                    <span class="text-slate-400 block mb-0.5">正解の基準音</span>
+                    <span id="result-target-hz" class="text-base font-bold font-mono text-slate-100">- Hz</span>
+                </div>
+            </div>
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 flex items-center justify-between mt-1">
+                <span class="text-xs font-semibold text-slate-300">ズレの大きさ</span>
+                <span id="result-diff" class="text-sm font-bold">-</span>
+            </div>
+            <p id="result-message" class="text-xs text-amber-500/90 leading-relaxed text-center mt-1"></p>
+        </div>
+
+        <!-- 答え合わせアクションボタン -->
+        <button id="btn-action" onclick="handleActionButton()" class="w-full py-4 rounded-2xl font-bold text-base shadow-lg transition-all bg-slate-800 text-slate-100 hover:bg-slate-700 active:scale-[0.98] border border-slate-700">
+            答え合わせ
+        </button>
+
+    </div>
+
+    <script>
+        // 音名リスト (♭フラット表記に統一)
+        const SEMITONES = ["C", "D♭", "D", "E♭", "E", "F", "G♭", "G", "A♭", "A", "B♭", "B"];
+        
+        // アプリケーションの状態
+        let state = {
+            octave: 4,
+            note: "A",
+            isPlaying: false,
+            gameStatus: "READY", // READY, PLAYING, CONFIRMED
+            targetHz: 442,       // A4=442Hz基準の平均律
+            currentHz: 442,      // 現在の設定周波数
+            dialAngle: 0         // ダイヤルの回転角度 (ラジアン)
+        };
+
+        // Web Audio API 関連
+        let audioCtx = null;
+        let mainOsc = null;
+        let mainGain = null;
+
+        // 音名選択グリッドの動的描画（IDはインデックス参照にして安全に）
+        const initNoteGrid = () => {
+            const grid = document.getElementById("note-grid");
+            grid.innerHTML = "";
+            SEMITONES.forEach((note, index) => {
+                const btn = document.createElement("button");
+                btn.id = `note-${index}`;
+                btn.className = "note-tab py-2.5 text-sm font-bold rounded-lg text-slate-400 hover:text-slate-200 transition-all";
+                btn.textContent = note;
+                btn.onclick = () => selectNote(note);
+                grid.appendChild(btn);
+            });
+            updateTabVisuals();
+        };
+
+        // タブの選択表示の更新
+        const updateTabVisuals = () => {
+            // オクターブ
+            document.querySelectorAll(".octave-tab").forEach(tab => {
+                tab.className = tab.className.replace(" bg-amber-500/10 text-amber-400 border border-amber-500/20", " text-slate-400");
+            });
+            const activeOctave = document.getElementById(`octave-${state.octave}`);
+            if (activeOctave) {
+                activeOctave.className += " bg-amber-500/10 text-amber-400 border border-amber-500/20";
+            }
+
+            // 音名
+            document.querySelectorAll(".note-tab").forEach(tab => {
+                tab.className = tab.className.replace(" bg-amber-500/10 text-amber-400 border border-amber-500/20", " text-slate-400");
+            });
+            const noteIdx = SEMITONES.indexOf(state.note);
+            const activeNote = document.getElementById(`note-${noteIdx}`);
+            if (activeNote) {
+                activeNote.className += " bg-amber-500/10 text-amber-400 border border-amber-500/20";
+            }
+        };
+
+        // 平均律の正確な計算 (A4 = 442Hz基準)
+        // A4からの半音距離dを求め、 f = 442 * 2^(d/12) で正確な基準ピッチを算出
+        const calculateTargetHz = (note, octave) => {
+            const noteIdx = SEMITONES.indexOf(note);
+            const semitonesFromA4 = (octave - 4) * 12 + (noteIdx - 9);
+            const hz = 442 * Math.pow(2, semitonesFromA4 / 12);
+            return parseFloat(hz.toFixed(1));
+        };
+
+        // オーディオの初期化
+        const initAudio = () => {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        };
+
+        // ダイヤル回転時のカチカチ動作音 (Web Audioでの合成)
+        const playTick = () => {
+            initAudio();
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(1400, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.02);
+                
+                gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.02);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.02);
+            } catch (e) {
+                // Fail-silent
+            }
+        };
+
+        // サイン波再生
+        const startSine = (freq) => {
+            initAudio();
+            if (!audioCtx) return;
+            try {
+                stopSine();
+                mainOsc = audioCtx.createOscillator();
+                mainGain = audioCtx.createGain();
+                
+                mainOsc.type = 'sine';
+                mainOsc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                
+                // アタックをわずかに滑らかにしてノイズを防ぐ
+                mainGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+                mainGain.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + 0.1);
+                
+                mainOsc.connect(mainGain);
+                mainGain.connect(audioCtx.destination);
+                mainOsc.start();
+            } catch (e) {
+                console.error(e);
+            }
+        };
+
+        const updateSineFrequency = (freq) => {
+            if (mainOsc && audioCtx) {
+                mainOsc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            }
+        };
+
+        const stopSine = () => {
+            try {
+                if (mainOsc) {
+                    mainOsc.stop();
+                    mainOsc.disconnect();
+                    mainOsc = null;
+                }
+                if (mainGain) {
+                    mainGain.disconnect();
+                    mainGain = null;
+                }
+            } catch (e) {}
+        };
+
+        // 新しいゲーム問題のセットアップ
+        const setupNewChallenge = () => {
+            state.targetHz = calculateTargetHz(state.note, state.octave);
+            
+            // 基準音から±10Hz～±20Hzの間でランダムにズレを設定
+            const dir = Math.random() < 0.5 ? -1 : 1;
+            const offset = Math.floor(10 + Math.random() * 11); // 10〜20の整数
+            const startHz = Math.round(state.targetHz + dir * offset);
+            state.currentHz = startHz;
+
+            // 15度 ＝ 1Hz。ラジアン換算：15 * Math.PI / 180 = Math.PI / 12
+            const radPerHz = Math.PI / 12;
+            state.dialAngle = (startHz - state.targetHz) * radPerHz;
+
+            updateDialWheelRotation();
+
+            // ブラインド状態へリセット
+            state.gameStatus = "READY";
+            document.getElementById("hz-display").textContent = "??? Hz";
+            document.getElementById("hz-display").classList.remove("text-amber-400");
+            document.getElementById("hz-display").classList.add("text-slate-100");
+            document.getElementById("blind-badge").classList.remove("hidden");
+            document.getElementById("result-panel").classList.add("hidden");
+            document.getElementById("btn-action").textContent = "答え合わせ";
+            document.getElementById("status-hint").textContent = "「音を鳴らす」とズレた音が再生されます";
+        };
+
+        // ダイヤル回転角の反映
+        const updateDialWheelRotation = () => {
+            const wheel = document.getElementById("dial-wheel");
+            wheel.style.transform = `rotate(${state.dialAngle}rad)`;
+        };
+
+        // オクターブ変更
+        const selectOctave = (oct) => {
+            if (state.gameStatus === "CONFIRMED") return;
+            state.octave = oct;
+            updateTabVisuals();
+            const wasPlaying = state.isPlaying;
+            stopGameAndAudio();
+            setupNewChallenge();
+            if (wasPlaying) togglePlay();
+        };
+
+        // 音名変更
+        const selectNote = (note) => {
+            if (state.gameStatus === "CONFIRMED") return;
+            state.note = note;
+            updateTabVisuals();
+            const wasPlaying = state.isPlaying;
+            stopGameAndAudio();
+            setupNewChallenge();
+            if (wasPlaying) togglePlay();
+        };
+
+        // 音の鳴らし始め・停止切り替え
+        const togglePlay = () => {
+            if (state.gameStatus === "CONFIRMED") {
+                setupNewChallenge();
+            }
+            
+            initAudio();
+            state.isPlaying = !state.isPlaying;
+
+            const btn = document.getElementById("btn-play");
+            const playText = document.getElementById("play-text");
+            const playIcon = document.getElementById("play-icon");
+            const stopIcon = document.getElementById("stop-icon");
+
+            if (state.isPlaying) {
+                btn.classList.remove("from-amber-500", "to-amber-600");
+                btn.classList.add("from-red-500", "to-red-600", "hover:from-red-400", "hover:to-red-500");
+                playText.textContent = "音を止める";
+                playIcon.classList.add("hidden");
+                stopIcon.classList.remove("hidden");
+                document.getElementById("status-hint").textContent = "音を聞きながらダイヤルを回そう！";
+                
+                state.gameStatus = "PLAYING";
+                startSine(state.currentHz);
+            } else {
+                btn.classList.remove("from-red-500", "to-red-600", "hover:from-red-400", "hover:to-red-500");
+                btn.classList.add("from-amber-500", "to-amber-600");
+                playText.textContent = "音を鳴らす";
+                playIcon.classList.remove("hidden");
+                stopIcon.classList.add("hidden");
+                document.getElementById("status-hint").textContent = "ピッチが合ったら下の答え合わせへ";
+                stopSine();
+            }
+        };
+
+        const stopGameAndAudio = () => {
+            state.isPlaying = false;
+            stopSine();
+            const btn = document.getElementById("btn-play");
+            btn.classList.remove("from-red-500", "to-red-600");
+            btn.classList.add("from-amber-500", "to-amber-600");
+            document.getElementById("play-text").textContent = "音を鳴らす";
+            document.getElementById("play-icon").classList.remove("hidden");
+            document.getElementById("stop-icon").classList.add("hidden");
+        };
+
+        // スマホに完全追従する「インクリメンタル相対ドラッグ」
+        const wheel = document.getElementById("dial-wheel");
+        let isDragging = false;
+        let lastAngle = 0;
+        let lastTickHz = 0;
+
+        const getPointerAngle = (e) => {
+            const rect = wheel.getBoundingClientRect();
+            const dialX = rect.left + rect.width / 2;
+            const dialY = rect.top + rect.height / 2;
+            
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            return Math.atan2(clientY - dialY, clientX - dialX);
+        };
+
+        const dragStart = (e) => {
+            if (state.gameStatus === "CONFIRMED") return;
+            isDragging = true;
+            lastAngle = getPointerAngle(e);
+            lastTickHz = state.currentHz;
+        };
+
+        const dragMove = (e) => {
+            if (!isDragging || state.gameStatus === "CONFIRMED") return;
+            const currentAngle = getPointerAngle(e);
+            let diff = currentAngle - lastAngle;
+
+            // 円をまたぐ境界判定
+            if (diff > Math.PI) diff -= Math.PI * 2;
+            if (diff < -Math.PI) diff += Math.PI * 2;
+
+            // ダイヤル回転角。15度(ラジアン Math.PI / 12) = 1Hz。可動域制限は最大±30Hz (450度)
+            const radPerHz = Math.PI / 12; // 15度
+            const maxAngle = 30 * radPerHz; // ±30Hz の範囲制限
+            
+            let nextAngle = state.dialAngle + diff;
+            nextAngle = Math.max(-maxAngle, Math.min(maxAngle, nextAngle));
+            
+            state.dialAngle = nextAngle;
+            lastAngle = currentAngle;
+
+            updateDialWheelRotation();
+
+            // 角度をもとに周波数を再計算
+            const deviationHz = Math.round(state.dialAngle / radPerHz);
+            const computedHz = Math.round(state.targetHz + deviationHz);
+
+            if (computedHz !== state.currentHz) {
+                state.currentHz = computedHz;
+                updateSineFrequency(computedHz);
+
+                // 1Hz刻みで小気味よいカチカチクリック音
+                if (computedHz !== lastTickHz) {
+                    playTick();
+                    lastTickHz = computedHz;
+                }
+            }
+        };
+
+        const dragEnd = () => {
+            isDragging = false;
+        };
+
+        // 各種イベントのアタッチ
+        wheel.addEventListener("mousedown", dragStart);
+        window.addEventListener("mousemove", dragMove);
+        window.addEventListener("mouseup", dragEnd);
+
+        wheel.addEventListener("touchstart", dragStart, { passive: true });
+        window.addEventListener("touchmove", dragMove, { passive: false });
+        window.addEventListener("touchend", dragEnd);
+
+        // 答え合わせアクションボタンの動作
+        const handleActionButton = () => {
+            if (state.gameStatus !== "CONFIRMED") {
+                // 答え合わせの実行
+                stopGameAndAudio();
+                state.gameStatus = "CONFIRMED";
+
+                const diff = state.currentHz - state.targetHz;
+                // 周波数を厳密に表示 (ターゲットは平均律計算式に準拠)
+                const formattedDiff = diff === 0 ? "ぴったり 0 Hz (完璧！)" : `${diff > 0 ? '+' : ''}${diff.toFixed(1)} Hz`;
+
+                document.getElementById("result-user-hz").textContent = `${state.currentHz} Hz`;
+                document.getElementById("result-target-hz").textContent = `${state.targetHz} Hz`;
+                
+                const diffEl = document.getElementById("result-diff");
+                diffEl.textContent = formattedDiff;
+                if (Math.abs(diff) === 0) {
+                    diffEl.className = "text-sm font-bold text-emerald-400";
+                    document.getElementById("result-message").textContent = "素晴らしい！完璧なピッチ感覚です。";
+                } else if (Math.abs(diff) <= 1) {
+                    diffEl.className = "text-sm font-bold text-teal-400";
+                    document.getElementById("result-message").textContent = "極めて優秀です！プロ級のピッチ感覚です。";
+                } else if (Math.abs(diff) <= 3) {
+                    diffEl.className = "text-sm font-bold text-amber-400";
+                    document.getElementById("result-message").textContent = "お見事！実用上全く問題のないレベルです。";
+                } else {
+                    diffEl.className = "text-sm font-bold text-rose-400";
+                    document.getElementById("result-message").textContent = "もう少し！サイン波の揺らぎや音の高低をじっくり聴いてみましょう。";
+                }
+
+                // 答え合わせ完了後に周波数を可視化
+                document.getElementById("hz-display").textContent = `${state.currentHz} Hz`;
+                document.getElementById("hz-display").classList.remove("text-slate-100");
+                document.getElementById("hz-display").classList.add("text-amber-400");
+                document.getElementById("blind-badge").classList.add("hidden");
+                document.getElementById("result-panel").classList.remove("hidden");
+                document.getElementById("btn-action").textContent = "もう一度挑戦する";
+            } else {
+                // 再スタート
+                setupNewChallenge();
+            }
+        };
+
+        // 初期セットアップ
+        initNoteGrid();
+        setupNewChallenge();
+    </script>
+</body>
+</html>
