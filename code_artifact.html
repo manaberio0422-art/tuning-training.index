@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <!-- スマホにフィットさせるメタタグ -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>音感トレーニング 442Hzシミュレーター</title>
+    <!-- Tailwind CSS 読み込み -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 美しいモダンフォントの読み込み -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-3 md:p-6 overflow-x-hidden">
+
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6 shadow-2xl flex flex-col gap-5 fade-in">
+        
+        <!-- ヘッダータイトル -->
+        <div class="text-center">
+            <h1 class="text-lg font-bold tracking-tight text-amber-400">音感トレーニング<br>442Hzシミュレーター</h1>
+            <p class="text-[11px] text-slate-400 mt-1">耳を鍛えるピッチ・チューニング練習</p>
+        </div>
+
+        <!-- モード切替タブ -->
+        <div class="grid grid-cols-2 bg-slate-950 rounded-2xl p-1 border border-slate-800/80">
+            <button onclick="switchMode('equal')" id="tab-equal" class="py-2.5 text-xs font-bold rounded-xl transition-all text-slate-300">平均律モード</button>
+            <button onclick="switchMode('just')" id="tab-just" class="py-2.5 text-xs font-bold rounded-xl transition-all text-slate-300">純正律モード</button>
+        </div>
+
+        <!-- オクターブ選択 (両モード共通で最上部に配置) -->
+        <div>
+            <span class="text-[10px] font-semibold text-slate-400 block mb-1 px-1">オクターブ</span>
+            <div class="grid grid-cols-3 bg-slate-950 rounded-xl p-1 gap-1 border border-slate-800/80">
+                <button onclick="selectOctave(3)" id="octave-3" class="octave-tab py-1.5 text-xs font-medium rounded-lg text-slate-400 transition-all border border-transparent">3</button>
+                <button onclick="selectOctave(4)" id="octave-4" class="octave-tab py-1.5 text-xs font-medium rounded-lg text-slate-400 transition-all border border-transparent">4</button>
+                <button onclick="selectOctave(5)" id="octave-5" class="octave-tab py-1.5 text-xs font-medium rounded-lg text-slate-400 transition-all border border-transparent">5</button>
+            </div>
+        </div>
+
+        <!-- 1. パラメータ選択領域 (平均律モード用) -->
+        <div id="panel-equal" class="flex flex-col gap-3">
+            <!-- 音名選択（フラット♭表記統一） -->
+            <div>
+                <span class="text-[10px] font-semibold text-slate-400 block mb-1 px-1">音階</span>
+                <div class="grid grid-cols-4 bg-slate-950 rounded-xl p-1 gap-1 border border-slate-800/80" id="note-grid">
+                    <!-- JSで動的にボタン生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. パラメータ選択領域 (純正律モード用 - 初期非表示) -->
+        <div id="panel-just" class="hidden flex flex-col gap-3">
+            <!-- ルート音選択（全12音・フラット♭表記統一） -->
+            <div>
+                <span class="text-[10px] font-semibold text-slate-400 block mb-1 px-1">ルート音 (根音)</span>
+                <div class="grid grid-cols-4 bg-slate-950 rounded-xl p-1 gap-1 border border-slate-800/80" id="just-root-grid">
+                    <!-- JSで動的にボタン生成 -->
+                </div>
+            </div>
+
+            <!-- コード種類（メジャー・マイナー） -->
+            <div>
+                <span class="text-[10px] font-semibold text-slate-400 block mb-1 px-1">コードの種類</span>
+                <div class="grid grid-cols-2 bg-slate-950 rounded-xl p-1 gap-1 border border-slate-800/80">
+                    <button onclick="selectJustQuality('major')" id="quality-major" class="quality-tab py-1.5 text-xs font-medium rounded-lg text-slate-400 transition-all border border-transparent">メジャー (Major)</button>
+                    <button onclick="selectJustQuality('minor')" id="quality-minor" class="quality-tab py-1.5 text-xs font-medium rounded-lg text-slate-400 transition-all border border-transparent">マイナー (Minor)</button>
+                </div>
+            </div>
+
+            <!-- 合わせるパート選択 -->
+            <div>
+                <span class="text-[10px] font-semibold text-slate-400 block mb-1 px-1">合わせる音 (バックにその他の和音構成音が純正ピッチ伴奏として流れます)</span>
+                <div class="grid grid-cols-4 bg-slate-950 rounded-xl p-1 gap-1 border border-slate-800/80">
+                    <button onclick="selectJustPart('3rd')" id="part-3rd" class="part-tab py-2 text-xs font-bold rounded-lg text-slate-400 transition-all border border-transparent">3rd</button>
+                    <button onclick="selectJustPart('5th')" id="part-5th" class="part-tab py-2 text-xs font-bold rounded-lg text-slate-400 transition-all border border-transparent">5th</button>
+                    <button onclick="selectJustPart('7th')" id="part-7th" class="part-tab py-2 text-xs font-bold rounded-lg text-slate-400 transition-all border border-transparent">7th</button>
+                    <button onclick="selectJustPart('9th')" id="part-9th" class="part-tab py-2 text-xs font-bold rounded-lg text-slate-400 transition-all border border-transparent">9th</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 再生・停止ボタン -->
+        <!-- 平均律用再生ボタン -->
+        <div id="play-container-equal" class="flex flex-col items-center gap-1.5">
+            <button id="btn-play" onclick="togglePlayEqual()" class="w-full py-3.5 rounded-2xl font-bold text-sm shadow-lg transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 hover:from-amber-400 hover:to-amber-500 active:scale-[0.98]">
+                <!-- 再生アイコン -->
+                <svg id="play-icon" class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                <!-- 停止アイコン (初期非表示) -->
+                <svg id="stop-icon" class="w-4 h-4 fill-current hidden" viewBox="0 0 24 24">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                </svg>
+                <span id="play-text">音を鳴らす</span>
+            </button>
+            <p id="status-hint" class="text-[10px] text-slate-500 italic mt-0.5">「音を鳴らす」とズレた音が再生されます</p>
+        </div>
+
+        <!-- 純正律用セパレート再生ボタン (初期非表示) -->
+        <div id="play-container-just" class="hidden flex flex-col gap-2">
+            <div class="grid grid-cols-2 gap-2">
+                <!-- 伴奏音再生ボタン -->
+                <button id="btn-play-bg" onclick="togglePlayBg()" class="py-3 rounded-2xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 active:scale-[0.98]">
+                    <svg id="play-icon-bg" class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                    </svg>
+                    <svg id="stop-icon-bg" class="w-3.5 h-3.5 fill-current hidden" viewBox="0 0 24 24">
+                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                    </svg>
+                    <span id="play-text-bg">伴奏を鳴らす</span>
+                </button>
+                <!-- 調整音再生ボタン -->
+                <button id="btn-play-main" onclick="togglePlayMain()" class="py-3 rounded-2xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 hover:from-amber-400 hover:to-amber-500 active:scale-[0.98]">
+                    <svg id="play-icon-main" class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    <svg id="stop-icon-main" class="w-3.5 h-3.5 fill-current hidden" viewBox="0 0 24 24">
+                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                    </svg>
+                    <span id="play-text-main">調整音を鳴らす</span>
+                </button>
+            </div>
+            <p id="status-hint-just" class="text-[10px] text-slate-500 italic mt-0.5 text-center">伴奏のコードを鳴らしながら、少し大きめの調整音をハモらせよう！</p>
+        </div>
+
+        <!-- 3. Hz調整ダイヤル -->
+        <div class="flex flex-col items-center justify-center relative">
+            <div class="text-center mb-2">
+                <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest block">ピッチ微調整</span>
+                <!-- 徹底的なブラインド仕様 -->
+                <div id="hz-display" class="text-2xl font-extrabold text-slate-100 font-mono tracking-wide mt-0.5">??? Hz</div>
+                <div id="blind-badge" class="inline-block bg-slate-950/80 text-amber-500/90 text-[10px] px-2 py-0.5 rounded-full border border-amber-500/20 font-medium mt-0.5">耳を頼りに合わせて！</div>
+            </div>
+
+            <!-- ダイヤルグラフィック -->
+            <div class="relative w-44 h-44 flex items-center justify-center touch-none select-none">
+                <!-- 外周リング -->
+                <div class="absolute inset-0 rounded-full border-4 border-slate-800 bg-slate-950/40 shadow-inner flex items-center justify-center">
+                    <!-- 正解(0Hzズレ)の基準点インジケータ (答え合わせ後に配置) -->
+                    <div id="target-indicator" class="absolute w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-md shadow-emerald-500/50 hidden"></div>
+                </div>
+
+                <!-- 回転ダイヤル（相対ドラッグ追従） -->
+                <div id="dial-wheel" class="w-36 h-36 rounded-full bg-slate-800 border-2 border-slate-700 shadow-2xl flex items-center justify-center cursor-grab active:cursor-grabbing transition-transform duration-75">
+                    <!-- 指針マーク -->
+                    <div class="absolute top-4.5 w-4 h-4 rounded-full bg-amber-500/20 flex items-center justify-center">
+                        <div class="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-lg shadow-amber-500/80"></div>
+                    </div>
+                    <!-- センターデザイン -->
+                    <div class="w-20 h-20 rounded-full bg-slate-900 border border-slate-700/60 flex flex-col items-center justify-center shadow-inner">
+                        <span class="text-[9px] text-slate-500 font-semibold uppercase tracking-wider">Tuning</span>
+                        <div class="flex gap-6 text-[10px] font-bold text-slate-600 mt-0.5">
+                            <span>-</span>
+                            <span>+</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-2 text-center">ダイヤルを回して調整</p>
+        </div>
+
+        <!-- 4. 答え合わせ結果表示パネル (答え合わせボタンを押すまで非表示) -->
+        <div id="result-panel" class="hidden flex flex-col gap-2.5 p-3.5 bg-slate-950 rounded-2xl border border-slate-800 fade-in">
+            <h3 class="text-xs font-bold text-amber-400">答え合わせ結果</h3>
+            <div class="grid grid-cols-2 gap-2 text-[11px]">
+                <div class="bg-slate-900/50 p-2 rounded-xl border border-slate-800/40">
+                    <span class="text-slate-400 block mb-0.5">あなたの設定</span>
+                    <span id="result-user-hz" class="text-sm font-bold font-mono text-slate-100">- Hz</span>
+                </div>
+                <div class="bg-slate-900/50 p-2 rounded-xl border border-slate-800/40">
+                    <span class="text-slate-400 block mb-0.5" id="target-label-text">正解の基準音</span>
+                    <span id="result-target-hz" class="text-sm font-bold font-mono text-slate-100">- Hz</span>
+                </div>
+            </div>
+            <div class="bg-slate-900 p-2 rounded-xl border border-slate-800 flex items-center justify-between">
+                <span class="text-[11px] font-semibold text-slate-300">ズレの大きさ</span>
+                <span id="result-diff" class="text-xs font-bold">-</span>
+            </div>
+            <!-- シンプルなワンワード判定フィードバック -->
+            <div class="bg-amber-500/10 border border-amber-500/20 py-2.5 rounded-xl flex items-center justify-center">
+                <span id="result-message" class="text-base font-extrabold tracking-widest text-amber-400"></span>
+            </div>
+            
+            <!-- 再解音/正解和音の試聴ボタンエリア (兼用化・統合設計) -->
+            <div class="flex flex-col gap-2 mt-1.5" id="listening-actions-container">
+                <!-- 単音試聴ボタン（常に出現：平均律では正解の単音、純正律では正解の純正単音を再生。JSで動的ラベル書き換え） -->
+                <button id="btn-ref-equal" onclick="toggleRefSound('equal')" class="ref-btn w-full py-2 px-3 rounded-xl font-bold text-xs bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                    </svg>
+                    <span id="ref-equal-text">正解の音を聴く</span>
+                </button>
+
+                <!-- 純正律用 追加試聴コンテナ (平均律では非表示) -->
+                <div id="just-ref-grid" class="hidden flex flex-col gap-1.5">
+                    <!-- 1. 正解の和音(純正) -->
+                    <button id="btn-ref-just-chord" onclick="toggleRefSound('just-chord')" class="ref-btn w-full py-2 px-3 rounded-xl font-bold text-xs bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                        </svg>
+                        <span id="ref-just-chord-text">正解の和音を聴く (純正律)</span>
+                    </button>
+                    <!-- 2. 平均律の同じ音 -->
+                    <button id="btn-ref-equal-mono" onclick="toggleRefSound('equal-mono')" class="ref-btn w-full py-2 px-3 rounded-xl font-bold text-xs bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                        </svg>
+                        <span id="ref-equal-mono-text">平均律の同じ音を聴く</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 答え合わせアクションボタン -->
+        <button id="btn-action" onclick="handleActionButton()" class="w-full py-3.5 rounded-2xl font-bold text-sm shadow-lg transition-all bg-slate-800 text-slate-100 hover:bg-slate-700 active:scale-[0.98] border border-slate-700">
+            答え合わせ
+        </button>
+
+    </div>
+
+    <script>
+        // 音名リスト (♭フラット表記に統一)
+        const SEMITONES = ["C", "D♭", "D", "E♭", "E", "F", "G♭", "G", "A♭", "A", "B♭", "B"];
+        
+        // アプリケーションの状態
+        let state = {
+            mode: "equal",       // equal = 平均律, just = 純正律
+            
+            // 共通
+            octave: 4,
+
+            // 平均律用
+            note: "A",
+            
+            // 純正律用
+            justRoot: "C",
+            justQuality: "major", // major = メジャー, minor = マイナー
+            justPart: "3rd",      // 3rd, 5th, 7th, 9th
+
+            // 音源のステータス管理
+            isPlayingMain: false, // ユーザーが調整するサイン波が鳴っているか
+            isPlayingBg: false,   // バックの伴奏（その他の和音）が鳴っているか
+            
+            gameStatus: "READY", // READY, PLAYING, CONFIRMED
+            targetHz: 442,       // 正解となる周波数 (計算値)
+            startHz: 442,        // 今回の出題での初期のズレ周波数 (ダイヤル真上 0度位置の音)
+            currentHz: 442,      // ダイヤルで回した現在の周波数
+            correctAngle: 0,     // 正解位置に緑のポッチを表示するためのラジアン角
+            dialAngle: 0,        // ダイヤルの現在の回転ラジアン角 (真上 = 0)
+            
+            // 試聴管理
+            currentRefType: null // null, 'equal', 'just-chord', 'equal-mono'
+        };
+
+        // Web Audio API 関連
+        let audioCtx = null;
+        
+        // オシレーター制御
+        let mainOsc = null;
+        let mainGain = null; // 調整用メイン音
+
+        let bgOscs = []; 
+        let bgGains = []; // 純正律のバック構成伴奏音用
+
+        // 正解音/和音の確認試聴用
+        let refOscs = [];
+        let refGains = [];
+
+        // 平均律音階グリッドの生成
+        const initNoteGrid = () => {
+            const grid = document.getElementById("note-grid");
+            grid.innerHTML = "";
+            SEMITONES.forEach((note, index) => {
+                const btn = document.createElement("button");
+                btn.id = `note-${index}`;
+                btn.className = "note-tab py-1.5 text-xs font-medium rounded-lg text-slate-400 transition-all border border-transparent";
+                btn.textContent = note;
+                btn.onclick = () => selectNote(note);
+                grid.appendChild(btn);
+            });
+        };
+
+        // 純正律ルート音グリッドの生成
+        const initJustRootGrid = () => {
+            const grid = document.getElementById("just-root-grid");
+            grid.innerHTML = "";
+            SEMITONES.forEach((note, index) => {
+                const btn = document.createElement("button");
+                btn.id = `just-root-${index}`;
+                btn.className = "just-root-tab py-1.5 text-xs font-medium rounded-lg text-slate-400 transition-all border border-transparent";
+                btn.textContent = note;
+                btn.onclick = () => selectJustRoot(note);
+                grid.appendChild(btn);
+            });
+        };
+
+        // モードの切替
+        const switchMode = (mode) => {
+            if (state.mode === mode) return;
+            stopAllAudio();
+            stopReferenceAudio();
+            state.mode = mode;
+            
+            const btnEqual = document.getElementById("tab-equal");
+            const btnJust = document.getElementById("tab-just");
+            const panelEqual = document.getElementById("panel-equal");
+            const panelJust = document.getElementById("panel-just");
+            const playContainerEqual = document.getElementById("play-container-equal");
+            const playContainerJust = document.getElementById("play-container-just");
+
+            if (mode === "equal") {
+                btnEqual.className = "py-2.5 text-xs font-bold rounded-xl transition-all bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 border border-amber-300 shadow-lg shadow-amber-500/20 scale-[1.02] transform";
+                btnJust.className = "py-2.5 text-xs font-medium rounded-xl transition-all text-slate-400 hover:text-slate-200";
+                panelEqual.classList.remove("hidden");
+                panelJust.classList.add("hidden");
+                playContainerEqual.classList.remove("hidden");
+                playContainerJust.classList.add("hidden");
+            } else {
+                btnJust.className = "py-2.5 text-xs font-bold rounded-xl transition-all bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 border border-amber-300 shadow-lg shadow-amber-500/20 scale-[1.02] transform";
+                btnEqual.className = "py-2.5 text-xs font-medium rounded-xl transition-all text-slate-400 hover:text-slate-200";
+                panelJust.classList.remove("hidden");
+                panelEqual.classList.add("hidden");
+                playContainerEqual.classList.add("hidden");
+                playContainerJust.classList.remove("hidden");
+            }
+            setupNewChallenge();
+        };
+
+        // 各構成要素のビジュアル更新 (選んだボタンを光らせるための完全クラス切り替え)
+        const updateTabVisuals = () => {
+            const INACTIVE_CLASS = "text-slate-400 bg-slate-950 border border-slate-800/80 hover:text-slate-200 hover:border-slate-700";
+            const ACTIVE_CLASS = "bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-bold border border-amber-300 shadow-lg shadow-amber-500/25 scale-[1.02] transform";
+
+            // 共通オクターブ
+            document.querySelectorAll(".octave-tab").forEach(tab => {
+                tab.className = "octave-tab py-1.5 text-xs font-medium rounded-lg transition-all " + INACTIVE_CLASS;
+            });
+            const activeOctave = document.getElementById(`octave-${state.octave}`);
+            if (activeOctave) {
+                activeOctave.className = "octave-tab py-1.5 text-xs rounded-lg transition-all " + ACTIVE_CLASS;
+            }
+
+            if (state.mode === "equal") {
+                // 平均律音名
+                document.querySelectorAll(".note-tab").forEach(tab => {
+                    tab.className = "note-tab py-1.5 text-xs font-medium rounded-lg transition-all " + INACTIVE_CLASS;
+                });
+                const noteIdx = SEMITONES.indexOf(state.note);
+                const activeNote = document.getElementById(`note-${noteIdx}`);
+                if (activeNote) {
+                    activeNote.className = "note-tab py-1.5 text-xs rounded-lg transition-all " + ACTIVE_CLASS;
+                }
+            } else {
+                // 純正律ルート音
+                document.querySelectorAll(".just-root-tab").forEach(tab => {
+                    tab.className = "just-root-tab py-1.5 text-xs font-medium rounded-lg transition-all " + INACTIVE_CLASS;
+                });
+                const rootIdx = SEMITONES.indexOf(state.justRoot);
+                const activeRoot = document.getElementById(`just-root-${rootIdx}`);
+                if (activeRoot) {
+                    activeRoot.className = "just-root-tab py-1.5 text-xs rounded-lg transition-all " + ACTIVE_CLASS;
+                }
+
+                // 純正律コード種類 (メジャー/マイナー)
+                document.querySelectorAll(".quality-tab").forEach(tab => {
+                    tab.className = "quality-tab py-1.5 text-xs font-medium rounded-lg transition-all " + INACTIVE_CLASS;
+                });
+                const activeQuality = document.getElementById(`quality-${state.justQuality}`);
+                if (activeQuality) {
+                    activeQuality.className = "quality-tab py-1.5 text-xs rounded-lg transition-all " + ACTIVE_CLASS;
+                }
+
+                // 純正律パート
+                document.querySelectorAll(".part-tab").forEach(tab => {
+                    tab.className = "part-tab py-2 text-xs font-bold rounded-lg transition-all " + INACTIVE_CLASS;
+                });
+                const activePart = document.getElementById(`part-${state.justPart}`);
+                if (activePart) {
+                    activePart.className = "part-tab py-2 text-xs rounded-lg transition-all " + ACTIVE_CLASS;
+                }
+            }
+        };
+
+        // 12等分平均律（A4=442Hz基準）
+        const calculateTargetHz = (note, octave) => {
+            const noteIdx = SEMITONES.indexOf(note);
+            const semitonesFromA4 = (octave - 4) * 12 + (noteIdx - 9);
+            const hz = 442 * Math.pow(2, semitonesFromA4 / 12);
+            return parseFloat(hz.toFixed(1));
+        };
+
+        // 純正律の比率取得 (ルートを1.0とした比率)
+        const getJustRatios = (quality) => {
+            return {
+                "root": 1.0,
+                "3rd": quality === "major" ? 1.25 : 1.20,     // 長3度 (5/4) または 短3度 (6/5)
+                "5th": 1.50,                                   // 完全5度 (3/2)
+                "7th": quality === "major" ? 1.875 : 1.80,     // 長7度 (15/8) または 短7度 (9/5)
+                "9th": 2.25                                    // 長9度 (9/4)
+            };
+        };
+
+        // 純正律ターゲット音の周波数算出
+        const calculateJustTargetHz = (rootNote, quality, part, octave) => {
+            const rootHz = calculateTargetHz(rootNote, octave);
+            const ratios = getJustRatios(quality);
+            return parseFloat((rootHz * ratios[part]).toFixed(1));
+        };
+
+        // 純正律のターゲットパートに対応する平均律での同一音高を正確に算出する
+        const getEqualEquivalentHz = (rootNote, quality, part, octave) => {
+            const rootIdx = SEMITONES.indexOf(rootNote);
+            let semitonesFromRoot = 0;
+            if (part === "3rd") {
+                semitonesFromRoot = (quality === "major") ? 4 : 3;
+            } else if (part === "5th") {
+                semitonesFromRoot = 7;
+            } else if (part === "7th") {
+                semitonesFromRoot = (quality === "major") ? 11 : 10;
+            } else if (part === "9th") {
+                semitonesFromRoot = 14; // 長9度
+            }
+            const totalSemitones = (octave - 4) * 12 + (rootIdx - 9) + semitonesFromRoot;
+            const hz = 442 * Math.pow(2, totalSemitones / 12);
+            return parseFloat(hz.toFixed(1));
+        };
+
+        // 伴奏（バックの音）にどのパートを割り当てるかの選定
+        const getBgParts = (targetPart) => {
+            if (targetPart === "3rd") return ["root", "5th"];
+            if (targetPart === "5th") return ["root", "3rd"];
+            if (targetPart === "7th") return ["root", "3rd", "5th"];
+            if (targetPart === "9th") return ["root", "3rd", "5th", "7th"];
+            return ["root"];
+        };
+
+        // Web Audio API 初期化
+        const initAudio = () => {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        };
+
+        // カチカチクリック音
+        const playTick = () => {
+            initAudio();
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(1400, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.02);
+                
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.02);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.02);
+            } catch (e) {}
+        };
+
+        // メイン調整音の再生
+        const startMainAudio = (freq) => {
+            initAudio();
+            if (!audioCtx) return;
+            try {
+                stopMainAudio();
+                
+                mainOsc = audioCtx.createOscillator();
+                mainGain = audioCtx.createGain();
+                
+                mainOsc.type = 'sine';
+                mainOsc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                
+                mainGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+                mainGain.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + 0.1);
+                
+                mainOsc.connect(mainGain);
+                mainGain.connect(audioCtx.destination);
+                mainOsc.start();
+            } catch (e) {}
+        };
+
+        const updateMainFrequency = (freq) => {
+            if (mainOsc && audioCtx) {
+                mainOsc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            }
+        };
+
+        const stopMainAudio = () => {
+            try {
+                if (mainOsc) {
+                    mainOsc.stop();
+                    mainOsc.disconnect();
+                    mainOsc = null;
+                }
+                if (mainGain) {
+                    mainGain.disconnect();
+                    mainGain = null;
+                }
+            } catch (e) {}
+        };
+
+        // 純正律伴奏音の再生
+        const startBgAudio = () => {
+            initAudio();
+            if (!audioCtx) return;
+            try {
+                stopBgAudio();
+                
+                const ratios = getJustRatios(state.justQuality);
+                const rootHz = calculateTargetHz(state.justRoot, state.octave);
+                const parts = getBgParts(state.justPart);
+                
+                parts.forEach(part => {
+                    const freq = rootHz * ratios[part];
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                    
+                    gain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 0.1);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    
+                    bgOscs.push(osc);
+                    bgGains.push(gain);
+                });
+            } catch (e) {}
+        };
+
+        const stopBgAudio = () => {
+            try {
+                bgOscs.forEach(osc => {
+                    osc.stop();
+                    osc.disconnect();
+                });
+                bgGains.forEach(gain => {
+                    gain.disconnect();
+                });
+                bgOscs = [];
+                bgGains = [];
+            } catch (e) {}
+        };
+
+        const stopAllAudio = () => {
+            stopMainAudio();
+            stopBgAudio();
+            state.isPlayingMain = false;
+            state.isPlayingBg = false;
+            updatePlayButtonVisuals();
+        };
+
+        // 正解音・正解和音・平均律比較の試聴再生ロジック
+        const startReferenceAudio = (type) => {
+            initAudio();
+            if (!audioCtx) return;
+            try {
+                stopReferenceAudio();
+                stopAllAudio(); // プレイ中/調整中の音源を完全に止める
+
+                if (type === "equal") {
+                    // 兼用単音ボタン：そのモードにおける「正確なターゲット音」を再生
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(state.targetHz, audioCtx.currentTime);
+                    
+                    gain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.16, audioCtx.currentTime + 0.08);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+
+                    refOscs.push(osc);
+                    refGains.push(gain);
+                } 
+                else if (type === "just-chord") {
+                    // 純正律：構成音をすべてきれいに調和させた「完全な純正和音」
+                    const ratios = getJustRatios(state.justQuality);
+                    const rootHz = calculateTargetHz(state.justRoot, state.octave);
+                    const activeParts = ["root", "3rd", "5th", "7th", "9th"];
+                    
+                    activeParts.forEach(part => {
+                        const freq = rootHz * ratios[part];
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                        
+                        gain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+                        gain.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 0.08);
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start();
+
+                        refOscs.push(osc);
+                        refGains.push(gain);
+                    });
+                } 
+                else if (type === "equal-mono") {
+                    // 平均律での同一音高の基準ピッチ (比較用)
+                    const eqHz = getEqualEquivalentHz(state.justRoot, state.justQuality, state.justPart, state.octave);
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(eqHz, audioCtx.currentTime);
+                    
+                    gain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.16, audioCtx.currentTime + 0.08);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+
+                    refOscs.push(osc);
+                    refGains.push(gain);
+                }
+                
+                state.currentRefType = type;
+                updateRefButtonsVisuals();
+            } catch (e) {}
+        };
+
+        const stopReferenceAudio = () => {
+            try {
+                refOscs.forEach(osc => {
+                    osc.stop();
+                    osc.disconnect();
+                });
+                refGains.forEach(gain => {
+                    gain.disconnect();
+                });
+                refOscs = [];
+                refGains = [];
+                state.currentRefType = null;
+                updateRefButtonsVisuals();
+            } catch (e) {}
+        };
+
+        // 比較試聴ボタンのビジュアル切替 (兼用化・統合対応)
+        const updateRefButtonsVisuals = () => {
+            const btnEqual = document.getElementById("btn-ref-equal");
+            const btnJustChord = document.getElementById("btn-ref-just-chord");
+            const btnEqualMono = document.getElementById("btn-ref-equal-mono");
+
+            const INACTIVE_CLASS = "ref-btn w-full py-2 px-3 rounded-xl font-bold text-xs bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center gap-1.5";
+            const ACTIVE_CLASS = "ref-btn w-full py-2 px-3 rounded-xl font-bold text-xs bg-gradient-to-r from-emerald-500 to-emerald-600 text-slate-950 border border-emerald-400 shadow-lg shadow-emerald-500/25 scale-[1.02] transform flex items-center justify-center gap-1.5";
+
+            // 初期リセット
+            btnEqual.className = INACTIVE_CLASS;
+            btnJustChord.className = INACTIVE_CLASS;
+            btnEqualMono.className = INACTIVE_CLASS;
+
+            // モードに応じたラベルの動的変更 (兼用ボタン `btn-ref-equal` をここで完璧にコントロール)
+            if (state.mode === "equal") {
+                document.getElementById("ref-equal-text").textContent = state.currentRefType === "equal" ? "音を止める" : "正解の音を聴く";
+            } else {
+                document.getElementById("ref-equal-text").textContent = state.currentRefType === "equal" ? "単音を止める" : `正解の単音を聴く (純正律: ${state.targetHz}Hz)`;
+            }
+            document.getElementById("ref-just-chord-text").textContent = state.currentRefType === "just-chord" ? "和音を止める" : "正解の和音を聴く (純正律)";
+            
+            // 平均律の同じ音ラベルに正確な平均律ピッチを動的に追加
+            if (state.gameStatus === "CONFIRMED" && state.mode === "just") {
+                const eqHz = getEqualEquivalentHz(state.justRoot, state.justQuality, state.justPart, state.octave);
+                document.getElementById("ref-equal-mono-text").textContent = state.currentRefType === "equal-mono" ? "平均律音を止める" : `平均律の同じ音を聴く (${eqHz}Hz)`;
+            } else {
+                document.getElementById("ref-equal-mono-text").textContent = state.currentRefType === "equal-mono" ? "平均律音を止める" : "平均律の同じ音を聴く";
+            }
+
+            // アクティブスタイルの割当
+            if (state.currentRefType) {
+                const type = state.currentRefType;
+                if (type === "equal") {
+                    btnEqual.className = ACTIVE_CLASS;
+                } else if (type === "just-chord") {
+                    btnJustChord.className = ACTIVE_CLASS;
+                } else if (type === "equal-mono") {
+                    btnEqualMono.className = ACTIVE_CLASS;
+                }
+            }
+        };
+
+        const toggleRefSound = (type) => {
+            if (state.currentRefType === type) {
+                stopReferenceAudio();
+            } else {
+                startReferenceAudio(type);
+            }
+        };
+
+        // 再生ボタン表示の更新
+        const updatePlayButtonVisuals = () => {
+            if (state.mode === "equal") {
+                const btn = document.getElementById("btn-play");
+                const playText = document.getElementById("play-text");
+                const playIcon = document.getElementById("play-icon");
+                const stopIcon = document.getElementById("stop-icon");
+
+                if (state.isPlayingMain) {
+                    btn.classList.remove("from-amber-500", "to-amber-600");
+                    btn.classList.add("from-red-500", "to-red-600", "hover:from-red-400", "hover:to-red-500");
+                    playText.textContent = "音を止める";
+                    playIcon.classList.add("hidden");
+                    stopIcon.classList.remove("hidden");
+                } else {
+                    btn.classList.remove("from-red-500", "to-red-600", "hover:from-red-400", "hover:to-red-500");
+                    btn.classList.add("from-amber-500", "to-amber-600");
+                    playText.textContent = "音を鳴らす";
+                    playIcon.classList.remove("hidden");
+                    stopIcon.classList.add("hidden");
+                }
+            } else {
+                // 純正律伴奏ボタン
+                const btnBg = document.getElementById("btn-play-bg");
+                const textBg = document.getElementById("play-text-bg");
+                const iconPlayBg = document.getElementById("play-icon-bg");
+                const iconStopBg = document.getElementById("stop-icon-bg");
+
+                if (state.isPlayingBg) {
+                    btnBg.className = "py-3 rounded-2xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 bg-red-600/10 text-red-400 hover:bg-red-600/20 border border-red-500/20 active:scale-[0.98]";
+                    textBg.textContent = "伴奏を止める";
+                    iconPlayBg.classList.add("hidden");
+                    iconStopBg.classList.remove("hidden");
+                } else {
+                    btnBg.className = "py-3 rounded-2xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 active:scale-[0.98]";
+                    textBg.textContent = "伴奏を鳴らす";
+                    iconPlayBg.classList.remove("hidden");
+                    iconStopBg.classList.add("hidden");
+                }
+
+                // 純正律調整音ボタン
+                const btnMain = document.getElementById("btn-play-main");
+                const textMain = document.getElementById("play-text-main");
+                const iconPlayMain = document.getElementById("play-icon-main");
+                const iconStopMain = document.getElementById("stop-icon-main");
+
+                if (state.isPlayingMain) {
+                    btnMain.className = "py-3 rounded-2xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 bg-gradient-to-r from-red-500 to-red-600 text-slate-950 hover:from-red-400 hover:to-red-500 active:scale-[0.98]";
+                    textMain.textContent = "調整音を止める";
+                    iconPlayMain.classList.add("hidden");
+                    iconStopMain.classList.remove("hidden");
+                } else {
+                    btnMain.className = "py-3 rounded-2xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 hover:from-amber-400 hover:to-amber-500 active:scale-[0.98]";
+                    textMain.textContent = "調整音を鳴らす";
+                    iconPlayMain.classList.remove("hidden");
+                    iconStopMain.classList.add("hidden");
+                }
+            }
+        };
+
+        // 再生トリガー (平均律用)
+        const togglePlayEqual = () => {
+            if (state.gameStatus === "CONFIRMED") {
+                setupNewChallenge();
+            }
+            initAudio();
+            stopReferenceAudio();
+            state.isPlayingMain = !state.isPlayingMain;
+
+            if (state.isPlayingMain) {
+                state.gameStatus = "PLAYING";
+                startMainAudio(state.currentHz);
+                document.getElementById("status-hint").textContent = "音を聞きながらダイヤルを回そう！";
+            } else {
+                stopMainAudio();
+                document.getElementById("status-hint").textContent = "ピッチが合ったら下の答え合わせへ";
+            }
+            updatePlayButtonVisuals();
+        };
+
+        // 再生トリガー (純正律・伴奏)
+        const togglePlayBg = () => {
+            if (state.gameStatus === "CONFIRMED") {
+                setupNewChallenge();
+            }
+            initAudio();
+            stopReferenceAudio();
+            state.isPlayingBg = !state.isPlayingBg;
+
+            if (state.isPlayingBg) {
+                state.gameStatus = "PLAYING";
+                startBgAudio();
+            } else {
+                stopBgAudio();
+            }
+            updatePlayButtonVisuals();
+        };
+
+        // 再生トリガー (純正律・調整音)
+        const togglePlayMain = () => {
+            if (state.gameStatus === "CONFIRMED") {
+                setupNewChallenge();
+            }
+            initAudio();
+            stopReferenceAudio();
+            state.isPlayingMain = !state.isPlayingMain;
+
+            if (state.isPlayingMain) {
+                state.gameStatus = "PLAYING";
+                startMainAudio(state.currentHz);
+            } else {
+                stopMainAudio();
+            }
+            updatePlayButtonVisuals();
+        };
+
+        // 新しいチューニング問題のセットアップ
+        const setupNewChallenge = () => {
+            stopReferenceAudio();
+            stopAllAudio();
+
+            if (state.mode === "equal") {
+                state.targetHz = calculateTargetHz(state.note, state.octave);
+            } else {
+                state.targetHz = calculateJustTargetHz(state.justRoot, state.justQuality, state.justPart, state.octave);
+            }
+            
+            // 基準音から±10Hz～±20Hzの間でランダムにズレを設定
+            const dir = Math.random() < 0.5 ? -1 : 1;
+            const offset = Math.floor(10 + Math.random() * 11) * dir; // 10〜20の整数
+            const startHz = Math.round(state.targetHz + offset);
+            state.startHz = startHz;
+            state.currentHz = startHz;
+
+            // ダイヤル初期位置は常に「真上 (0)」から開始
+            state.dialAngle = 0;
+
+            // 15度 ＝ 1Hz
+            const radPerHz = Math.PI / 12;
+            
+            // 正解の角度（0Hzズレになる角度）を今回のランダムズレ幅から逆算して保持（最大±360度の範囲内）
+            state.correctAngle = (state.targetHz - startHz) * radPerHz;
+
+            updateDialWheelRotation();
+
+            // ブラインド状態へリセット
+            state.gameStatus = "READY";
+            document.getElementById("hz-display").textContent = "??? Hz";
+            document.getElementById("hz-display").classList.remove("text-amber-400");
+            document.getElementById("hz-display").classList.add("text-slate-100");
+            document.getElementById("blind-badge").classList.remove("hidden");
+            document.getElementById("result-panel").classList.add("hidden");
+            document.getElementById("target-indicator").classList.add("hidden"); // 正解インジケータも隠す
+            document.getElementById("btn-action").textContent = "答え合わせ";
+            
+            if (state.mode === "equal") {
+                document.getElementById("status-hint").textContent = "「音を鳴らす」とズレた音が再生されます";
+            } else {
+                document.getElementById("status-hint-just").textContent = "伴奏のコードを鳴らしながら、少し大きめの調整音をハモらせよう！";
+            }
+            updateTabVisuals();
+        };
+
+        // ダイヤル回転角の反映
+        const updateDialWheelRotation = () => {
+            const wheel = document.getElementById("dial-wheel");
+            wheel.style.transform = `rotate(${state.dialAngle}rad)`;
+        };
+
+        // 共通オクターブ変更
+        const selectOctave = (oct) => {
+            if (state.gameStatus === "CONFIRMED") return;
+            state.octave = oct;
+            const wasPlayingMain = state.isPlayingMain;
+            const wasPlayingBg = state.isPlayingBg;
+            stopAllAudio();
+            setupNewChallenge();
+            if (state.mode === "equal" && wasPlayingMain) {
+                togglePlayEqual();
+            } else {
+                if (wasPlayingBg) togglePlayBg();
+                if (wasPlayingMain) togglePlayMain();
+            }
+        };
+
+        // 平均律音名変更
+        const selectNote = (note) => {
+            if (state.gameStatus === "CONFIRMED") return;
+            state.note = note;
+            const wasPlaying = state.isPlayingMain;
+            stopAllAudio();
+            setupNewChallenge();
+            if (wasPlaying) togglePlayEqual();
+        };
+
+        // 純正律ルート音変更
+        const selectJustRoot = (rootNote) => {
+            if (state.gameStatus === "CONFIRMED") return;
+            state.justRoot = rootNote;
+            const wasPlayingMain = state.isPlayingMain;
+            const wasPlayingBg = state.isPlayingBg;
+            stopAllAudio();
+            setupNewChallenge();
+            if (wasPlayingBg) togglePlayBg();
+            if (wasPlayingMain) togglePlayMain();
+        };
+
+        // 純正律コード種類変更
+        const selectJustQuality = (quality) => {
+            if (state.gameStatus === "CONFIRMED") return;
+            state.justQuality = quality;
+            const wasPlayingMain = state.isPlayingMain;
+            const wasPlayingBg = state.isPlayingBg;
+            stopAllAudio();
+            setupNewChallenge();
+            if (wasPlayingBg) togglePlayBg();
+            if (wasPlayingMain) togglePlayMain();
+        };
+
+        // 純正律パート変更
+        const selectJustPart = (part) => {
+            if (state.gameStatus === "CONFIRMED") return;
+            state.justPart = part;
+            const wasPlayingMain = state.isPlayingMain;
+            const wasPlayingBg = state.isPlayingBg;
+            stopAllAudio();
+            setupNewChallenge();
+            if (wasPlayingBg) togglePlayBg();
+            if (wasPlayingMain) togglePlayMain();
+        };
+
+        // スマホに完全追従する「インクリメンタル相対ドラッグ」
+        const wheel = document.getElementById("dial-wheel");
+        let isDragging = false;
+        let lastAngle = 0;
+        let lastTickHz = 0;
+
+        const getPointerAngle = (e) => {
+            const rect = wheel.getBoundingClientRect();
+            const dialX = rect.left + rect.width / 2;
+            const dialY = rect.top + rect.height / 2;
+            
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            return Math.atan2(clientY - dialY, clientX - dialX);
+        };
+
+        const dragStart = (e) => {
+            if (state.gameStatus === "CONFIRMED") return;
+            isDragging = true;
+            lastAngle = getPointerAngle(e);
+            lastTickHz = state.currentHz;
+        };
+
+        const dragMove = (e) => {
+            if (!isDragging || state.gameStatus === "CONFIRMED") return;
+            const currentAngle = getPointerAngle(e);
+            let diff = currentAngle - lastAngle;
+
+            // 円をまたぐ境界判定
+            if (diff > Math.PI) diff -= Math.PI * 2;
+            if (diff < -Math.PI) diff += Math.PI * 2;
+
+            // ダイヤル回転角。15度(ラジアン Math.PI / 12) = 1Hz。可動域制限は最大±30Hz (360度)
+            const radPerHz = Math.PI / 12; // 15度
+            const maxAngle = 30 * radPerHz; // ±30Hz の範囲制限
+            
+            let nextAngle = state.dialAngle + diff;
+            
+            // 左右最大±30Hzの範囲で回せるように制限
+            nextAngle = Math.max(-maxAngle, Math.min(maxAngle, nextAngle));
+            
+            state.dialAngle = nextAngle;
+            lastAngle = currentAngle;
+
+            updateDialWheelRotation();
+
+            // 初期のズレピッチ（startHz）をベースに、現在の周波数を計算
+            const deviationHz = Math.round(state.dialAngle / radPerHz);
+            const computedHz = Math.round(state.startHz + deviationHz);
+
+            if (computedHz !== state.currentHz) {
+                state.currentHz = computedHz;
+                updateMainFrequency(computedHz);
+
+                // 1Hz刻みでクリック音
+                if (computedHz !== lastTickHz) {
+                    playTick();
+                    lastTickHz = computedHz;
+                }
+            }
+        };
+
+        const dragEnd = () => {
+            isDragging = false;
+        };
+
+        // 各種イベントのアタッチ
+        wheel.addEventListener("mousedown", dragStart);
+        window.addEventListener("mousemove", dragMove);
+        window.addEventListener("mouseup", dragEnd);
+
+        wheel.addEventListener("touchstart", dragStart, { passive: true });
+        window.addEventListener("touchmove", dragMove, { passive: false });
+        window.addEventListener("touchend", dragEnd);
+
+        // 答え合わせアクションボタンの動作
+        const handleActionButton = () => {
+            if (state.gameStatus !== "CONFIRMED") {
+                // 答え合わせの実行
+                stopAllAudio();
+                state.gameStatus = "CONFIRMED";
+
+                const diff = state.currentHz - state.targetHz;
+                const formattedDiff = diff === 0 ? "ぴったり 0 Hz" : `${diff > 0 ? '+' : ''}${diff.toFixed(1)} Hz`;
+
+                document.getElementById("result-user-hz").textContent = `${state.currentHz} Hz`;
+                document.getElementById("result-target-hz").textContent = `${state.targetHz} Hz`;
+                
+                // コンテナの物理的な表示・非表示切り替え (バグを完全回避)
+                const justRefGrid = document.getElementById("just-ref-grid");
+
+                if (state.mode === "equal") {
+                    document.getElementById("target-label-text").textContent = "正解の基準音";
+                    justRefGrid.classList.add("hidden"); // 純正律用の試聴コンテナをグループごと非表示に
+                } else {
+                    const qualityName = state.justQuality === "major" ? "Major" : "Minor";
+                    const partName = state.justPart;
+                    document.getElementById("target-label-text").textContent = `${state.justRoot}${qualityName}の純正${partName}`;
+                    justRefGrid.classList.remove("hidden"); // 純正律用の試聴コンテナをグループごと表示に
+                }
+
+                const diffEl = document.getElementById("result-diff");
+                diffEl.textContent = formattedDiff;
+                
+                // おおらかな判定基準の適用 (0なら完璧、5ならすごい、10なら惜しい、それ以上なら残念)
+                const absDiff = Math.abs(diff);
+                const msgEl = document.getElementById("result-message");
+                
+                if (absDiff === 0) {
+                    diffEl.className = "text-xs font-bold text-emerald-400";
+                    msgEl.textContent = "完璧";
+                    msgEl.className = "text-base font-extrabold tracking-widest text-emerald-400";
+                } else if (absDiff <= 5) {
+                    diffEl.className = "text-xs font-bold text-teal-400";
+                    msgEl.textContent = "すごい";
+                    msgEl.className = "text-base font-extrabold tracking-widest text-teal-400";
+                } else if (absDiff <= 10) {
+                    diffEl.className = "text-xs font-bold text-amber-400";
+                    msgEl.textContent = "惜しい";
+                    msgEl.className = "text-base font-extrabold tracking-widest text-amber-400";
+                } else {
+                    diffEl.className = "text-xs font-bold text-rose-400";
+                    msgEl.textContent = "残念";
+                    msgEl.className = "text-base font-extrabold tracking-widest text-rose-400";
+                }
+
+                // 答え合わせ完了後に周波数を可視化
+                document.getElementById("hz-display").textContent = `${state.currentHz} Hz`;
+                document.getElementById("hz-display").classList.remove("text-slate-100");
+                document.getElementById("hz-display").classList.add("text-amber-400");
+                document.getElementById("blind-badge").classList.add("hidden");
+                document.getElementById("result-panel").classList.remove("hidden");
+
+                // 正解ピッチ（0Hzズレ）の位置に緑のポッチを出現させる
+                const indicator = document.getElementById("target-indicator");
+                const r = 82; // 外径中心からの配置半径
+                const angle = state.correctAngle - Math.PI / 2; // 真上が0度の基準になるように補正
+                const x = 88 + r * Math.cos(angle); // 親要素w-44(176px)の中心88pxを基準に算出
+                const y = 88 + r * Math.sin(angle);
+                indicator.style.left = `${x - 5}px`; // ポッチ自体のサイズw-2.5(10px)の半分5pxを引いて中心位置を合致
+                indicator.style.top = `${y - 5}px`;
+                indicator.classList.remove("hidden");
+
+                // 試聴用ボタン群のテキストや状態の再描画 (兼用ボタンの再ラベリング含む)
+                updateRefButtonsVisuals();
+
+                document.getElementById("btn-action").textContent = "もう一度挑戦する";
+            } else {
+                // 再スタート
+                setupNewChallenge();
+            }
+        };
+
+        // 初期セットアップ
+        initNoteGrid();
+        initJustRootGrid();
+        switchMode('equal'); // 最初は平均律モードで初期起動
+    </script>
+</body>
+</html>
